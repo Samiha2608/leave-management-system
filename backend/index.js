@@ -22,20 +22,31 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api', authMiddleware, leaveRoutes); // Apply auth middleware to protected routes
 
-// MySQL Connection
-const db = mysql.createConnection({
+// Replace direct connection with a pool
+const db = mysql.createPool({
   host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT, 10),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  connectTimeout: 60000,
+  // Add SSL config if needed
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-db.connect((err) => {
+// Replace db.connect with pool check
+db.getConnection((err, connection) => {
   if (err) {
-    console.error('Database connection failed:', err.stack);
+    console.error('Database connection failed:', err);
     return;
   }
   console.log('Connected to MySQL database.');
+  connection.release();
 });
 
 // Multer setup for file uploads
